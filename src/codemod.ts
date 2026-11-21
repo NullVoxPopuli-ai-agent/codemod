@@ -2,6 +2,8 @@ import { readImportAliases, readSourceDirs } from '#lib/file-system.ts';
 import { addIconImports, replaceMustachesWithComponents } from '#lib/replace-mustaches.ts';
 import { resolveIconNames, type AmbiguousIconRef, type UnresolvedIconRef } from '#lib/resolve-icon-names.ts';
 import type { ImportAlias } from '#lib/resolve-import-alias.ts';
+import type { GlimmerMustacheStatement } from '#types/glimmer-types.ts';
+import { extractRawIconName } from '#utils/glimmer.ts';
 import { z, type ASTNode } from 'zmod';
 import { emberParser } from 'zmod-ember';
 
@@ -58,7 +60,7 @@ export interface TransformResult {
  *   3. Replace resolved mustaches with angle-bracket component tags. Icons
  *      that cannot be found on disk are left unchanged.
  *   4. Remove the `ember-svg-jar` import declaration (only when all icons
- *      in the file were resolved).
+ *      in the file were resolved and none has a dynamic name).
  *   5. Add a new import for each resolved icon component.
  *
  * @param source   Raw source text of the file.
@@ -99,9 +101,13 @@ export function transform(source: string, filePath: string, options: TransformOp
   replaceMustachesWithComponents(svgJarUsages, resolvedIcons, source);
 
   // Only remove the svgJar import when every icon in the file was resolved.
-  // If some icons could not be found, the import must stay because unresolved
-  // mustaches still reference the svgJar helper.
-  if (svgJarImport.length > 0 && unresolvedIcons.length === 0) {
+  // Unresolved icons and dynamic names, such as {{svgJar @icon}}, stay as
+  // mustaches that still reference the svgJar helper.
+  const hasDynamicNames = svgJarUsages
+    .nodes()
+    .some((node: ASTNode) => !extractRawIconName((node as GlimmerMustacheStatement).params[0]));
+
+  if (svgJarImport.length > 0 && unresolvedIcons.length === 0 && !hasDynamicNames) {
     svgJarImport.remove();
   }
 

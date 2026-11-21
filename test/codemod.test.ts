@@ -11,6 +11,7 @@ const templateOnlyFixture = readFixture('template-only.gjs');
 const templateOnlyTsFixture = readFixture('template-only.gts');
 const noImportsFixture = readFixture('no-imports.gjs');
 const renamedImportFixture = readFixture('renamed-import.gjs');
+const dynamicNameFixture = readFixture('dynamic-name.gjs');
 
 describe('class-backed.gjs', () => {
   const { output } = run(classBackedFixture, 'class-backed.gjs', { projectRoot });
@@ -135,5 +136,19 @@ describe('renamed-import.gjs', () => {
     expect(output).toContain('<SpriteIcon />');
     expect(output).not.toContain("import myCustomImportName from 'ember-svg-jar/helpers/svg-jar';");
     expect(output).not.toContain('{{myCustomImportName "icon-name"}}');
+  });
+});
+
+describe('dynamic-name.gjs', () => {
+  const { output } = run(dynamicNameFixture, 'dynamic-name.gjs', { projectRoot });
+
+  it('keeps the svgJar import for icon names that are not string literals', () => {
+    expect(output).toContain("import svgJar from 'ember-svg-jar/helpers/svg-jar';");
+    expect(output).toContain('{{svgJar @icon class="my-icon"}}');
+  });
+
+  it('replaces the static usages', () => {
+    expect(output).toContain('<OneIcon />');
+    expect(output).toContain("import OneIcon from './public/one-icon.svg?unsafe-inline';");
   });
 });
